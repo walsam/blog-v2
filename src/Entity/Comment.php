@@ -7,32 +7,61 @@ use App\Repository\CommentRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ORM\Entity(repositoryClass=CommentRepository::class)
  */
-#[ApiResource]
-class Comment
+#[ApiResource(
+    collectionOperations: [
+        "get" => ["normalization_context" => ["groups" => ["get-comment-with-author"]]],
+        "post" => ["security" => "is_granted('ROLE_COMMENTATOR')"],
+    ],
+    itemOperations: [
+        "get" => ["normalization_context" => ["groups" => ["get-comment-with-author"]]],
+        "put" => ["security" => "is_granted('ROLE_COMMENTATOR') or object.author == user"],
+    ],
+    subresourceOperations: [
+       "api_blog_posts_comments_get_subresource" => [
+           "method" => "GET",
+           "normalization_context" => ["groups"=>["get-comment-with-author"]],
+        ]
+    ],
+    attributes: [
+        "security" => "is_granted('ROLE_COMMENTATOR')",
+        "order" => ["createdAt" => "DESC"],
+        "pagination_items_per_page" => 10
+    ],
+    denormalizationContext: [
+        "groups"=>["post"],
+    ]
+)]
+class Comment Implements AuthoredEntityInterface
 {
     /**
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @Groups({"get-comment-with-author"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="text")
+     * @Groups({"get-blog-post-with-author","get-comment-with-author"})
      */
     private $content;
 
     /**
      * @ORM\Column(type="datetime_immutable")
+     * @Groups({"get-blog-post-with-author","get-comment-with-author"})
      */
     private $createdAt;
 
     /**
      * @ORM\Column(type="datetime_immutable")
+     * @Groups({"get-blog-post-with-author","get-comment-with-author"})
      */
     private $ModifiedAt;
 
@@ -44,6 +73,7 @@ class Comment
 
     /**
      * @ORM\ManyToOne(targetEntity=Comment::class, inversedBy="childrens")
+     * @Groups({"get-blog-post-with-author","get-comment-with-author"})
      */
     private $parentComent;
 
@@ -55,6 +85,7 @@ class Comment
     /**
      * @ORM\ManyToOne(targetEntity=User::class, inversedBy="comments")
      * @ORM\JoinColumn(nullable=false)
+     * @Groups({"get-blog-post-with-author","get-comment-with-author"})
      */
     private $author;
 
@@ -163,7 +194,7 @@ class Comment
         return $this->author;
     }
 
-    public function setAuthor(?User $author): self
+    public function setAuthor(?UserInterface $author): AuthoredEntityInterface
     {
         $this->author = $author;
 

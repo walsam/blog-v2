@@ -8,20 +8,29 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Annotation\Groups;
+use ApiPlatform\Core\Annotation\ApiSubresource;
 
 /**
  * @ORM\Entity(repositoryClass=BlogPostRepository::class)
  */
 #[ApiResource(
     collectionOperations: [
-        "get",
+        "get" => ["normalization_context" => ["groups" => ["get-blog-post-with-author"]]],
         "post" => ["security" => "is_granted('ROLE_WRITER')"],
     ],
     itemOperations: [
-        "get",
+        "get" => ["normalization_context" => ["groups" => ["get-blog-post-with-author"]]],
         "put" => ["security" => "is_granted('ROLE_WRITER') or object.author == user"],
     ],
-    attributes: ["security" => "is_granted('ROLE_COMMENTATOR')"],
+    attributes: [
+        "security" => "is_granted('ROLE_COMMENTATOR')",
+        "order" => ["createdAt" => "DESC"],
+        "pagination_items_per_page" => 10
+    ],
+    denormalizationContext: [
+        "groups" => ["postBlogPost"]
+    ]
 )]
 class BlogPost Implements AuthoredEntityInterface
 {
@@ -29,48 +38,59 @@ class BlogPost Implements AuthoredEntityInterface
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @Groups({"get-blog-post-with-author"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"postBlogPost","get-blog-post-with-author"})
      */
     private $title;
 
     /**
      * @ORM\Column(type="text")
+     * @Groups({"postBlogPost","get-blog-post-with-author"})
      */
     private $content;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"postBlogPost","get-blog-post-with-author"})
      */
     private $slug;
 
     /**
      * @ORM\Column(type="datetime_immutable")
+     * @Groups({"get-blog-post-with-author"})
      */
     private $createdAt;
 
     /**
      * @ORM\Column(type="datetime_immutable")
+     * @Groups({"get-blog-post-with-author"})
      */
     private $modifiedAt;
 
     /**
      * @ORM\OneToMany(targetEntity=Comment::class, mappedBy="blogPost")
+     * @Groups({"get-blog-post-with-author"})
+     * @ApiSubresource()
      */
     private $comments;
 
     /**
      * @ORM\ManyToOne(targetEntity=User::class, inversedBy="blogPosts")
      * @ORM\JoinColumn(nullable=false)
+     * @Groups({"get-blog-post-with-author"})
      */
     private $author;
 
     public function __construct()
     {
         $this->comments = new ArrayCollection();
+        $this->setCreatedAt();
+        $this->setModifiedAt();
     }
 
     public function getId(): ?int
@@ -119,9 +139,9 @@ class BlogPost Implements AuthoredEntityInterface
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): self
+    public function setCreatedAt(): self
     {
-        $this->createdAt = $createdAt;
+        $this->createdAt = new \DateTimeImmutable();
 
         return $this;
     }
@@ -131,9 +151,9 @@ class BlogPost Implements AuthoredEntityInterface
         return $this->modifiedAt;
     }
 
-    public function setModifiedAt(\DateTimeImmutable $modifiedAt): self
+    public function setModifiedAt(): self
     {
-        $this->modifiedAt = $modifiedAt;
+        $this->modifiedAt = new \DateTimeImmutable();
 
         return $this;
     }
