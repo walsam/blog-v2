@@ -7,12 +7,23 @@ use App\Repository\BlogPostRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * @ORM\Entity(repositoryClass=BlogPostRepository::class)
  */
-#[ApiResource]
-class BlogPost
+#[ApiResource(
+    collectionOperations: [
+        "get",
+        "post" => ["security" => "is_granted('ROLE_WRITER')"],
+    ],
+    itemOperations: [
+        "get",
+        "put" => ["security" => "is_granted('ROLE_WRITER') or object.author == user"],
+    ],
+    attributes: ["security" => "is_granted('ROLE_COMMENTATOR')"],
+)]
+class BlogPost Implements AuthoredEntityInterface
 {
     /**
      * @ORM\Id
@@ -162,7 +173,7 @@ class BlogPost
         return $this->author;
     }
 
-    public function setAuthor(?User $author): self
+    public function setAuthor(?UserInterface $author): AuthoredEntityInterface
     {
         $this->author = $author;
 

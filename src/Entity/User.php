@@ -7,13 +7,24 @@ use App\Repository\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * @ORM\Entity(repositoryClass=UserRepository::class)
+ * @method string getUserIdentifier()
  */
 #[ApiResource]
-class User
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    const ROLE_COMMENTATOR = "ROLE_COMMENTATOR";
+    const ROLE_WRITER = "ROLE_WRITER";
+    const ROLE_EDITOR = "ROLE_EDITOR";
+    const ROLE_ADMIN = "ROLE_ADMIN";
+    const ROLE_SUPERADMIN = "ROLE_SUPERADMIN";
+
+    const DEFAULT_ROLE = [self::ROLE_COMMENTATOR];
+
     /**
      * @ORM\Id
      * @ORM\GeneratedValue
@@ -80,6 +91,8 @@ class User
     {
         $this->blogPosts = new ArrayCollection();
         $this->comments = new ArrayCollection();
+        $this->roles = self::DEFAULT_ROLE;
+        $this->enabled = false;
     }
 
     public function getId(): ?int
@@ -253,5 +266,20 @@ class User
         }
 
         return $this;
+    }
+
+    public function getSalt()
+    {
+        // TODO: Implement getSalt() method.
+    }
+
+    public function eraseCredentials()
+    {
+        // TODO: Implement eraseCredentials() method.
+    }
+
+    public function __call($name, $arguments)
+    {
+        // TODO: Implement @method string getUserIdentifier()
     }
 }
